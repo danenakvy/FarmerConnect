@@ -1,0 +1,1117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FarmConnect - Farmer's Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      /* Custom CSS for elements not easily styled with Tailwind */
+      .language-switch {
+        position: relative;
+        width: 60px;
+        height: 30px;
+      }
+      .language-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .language-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #4caf50;
+        transition: 0.4s;
+        border-radius: 34px;
+      }
+      .language-slider:before {
+        position: absolute;
+        content: "EN";
+        color: white;
+        height: 22px;
+        width: 22px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: bold;
+      }
+      input:checked + .language-slider:before {
+        content: "KH";
+        transform: translateX(30px);
+      }
+      .crop-cycle {
+        position: relative;
+        height: 120px;
+      }
+      .crop-cycle::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(
+          90deg,
+          #4caf50 0%,
+          #8bc34a 50%,
+          #ffc107 75%,
+          #ff5722 100%
+        );
+        transform: translateY(-50%);
+      }
+      .crop-cycle-stage {
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      .map-container {
+        height: 200px;
+        background-color: #e0e0e0;
+        position: relative;
+        overflow: hidden;
+      }
+      .map-placeholder {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+            45deg,
+            #8bc34a 25%,
+            transparent 25%,
+            transparent 75%,
+            #8bc34a 75%,
+            #8bc34a
+          ),
+          linear-gradient(
+            45deg,
+            #8bc34a 25%,
+            transparent 25%,
+            transparent 75%,
+            #8bc34a 75%,
+            #8bc34a
+          );
+        background-size: 20px 20px;
+        background-position: 0 0, 10px 10px;
+      }
+      /* Animation for loading */
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      .animate-pulse {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-50 font-sans">
+    <!-- App Container -->
+    <div
+      class="max-w-md mx-auto bg-white shadow-lg rounded-lg overflow-hidden min-h-screen flex flex-col"
+    >
+      <!-- Header with Language Toggle -->
+      <div class="bg-green-600 p-4 flex justify-between items-center">
+        <div class="flex items-center">
+          <i class="fas fa-leaf text-white text-2xl mr-2"></i>
+          <h1 class="text-white font-bold text-xl" id="app-title">
+            FarmConnect
+          </h1>
+        </div>
+        <label class="language-switch">
+          <input type="checkbox" id="language-toggle" />
+          <span class="language-slider"></span>
+        </label>
+      </div>
+
+      <!-- User Profile Section -->
+      <div class="p-4 border-b">
+        <div class="flex items-center">
+          <div class="relative">
+            <img
+              src="https://ui-avatars.com/api/?name=John+Doe&background=4CAF50&color=fff"
+              alt="Farmer"
+              class="w-16 h-16 rounded-full border-2 border-green-500"
+            />
+            <span
+              class="absolute bottom-0 right-0 bg-green-500 text-white rounded-full w-5 h-5 flex items-center justify-center"
+            >
+              <i class="fas fa-check text-xs"></i>
+            </span>
+          </div>
+          <div class="ml-4">
+            <h2 class="font-bold text-lg" id="farmer-name">សាឡឹត ម៉េង</h2>
+            <p class="text-gray-600 text-sm" id="farmer-id">
+              Farmer ID: FC-2023-001
+            </p>
+            <div class="flex mt-1">
+              <span
+                class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded mr-2"
+                id="farmer-status"
+                >Active</span
+              >
+              <span
+                class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
+                id="farmer-type"
+                >Smallholder</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="flex border-b">
+        <button
+          class="tab-btn flex-1 py-3 px-4 text-center font-medium text-green-600 border-b-2 border-green-600"
+          data-tab="dashboard"
+        >
+          <i class="fas fa-home mr-1"></i>
+          <span id="tab-dashboard">Dashboard</span>
+        </button>
+        <button
+          class="tab-btn flex-1 py-3 px-4 text-center font-medium text-gray-500"
+          data-tab="farm"
+        >
+          <i class="fas fa-tractor mr-1"></i>
+          <span id="tab-farm">My Farm</span>
+        </button>
+        <button
+          class="tab-btn flex-1 py-3 px-4 text-center font-medium text-gray-500"
+          data-tab="market"
+        >
+          <i class="fas fa-shopping-basket mr-1"></i>
+          <span id="tab-market">Market</span>
+        </button>
+        <button
+          class="tab-btn flex-1 py-3 px-4 text-center font-medium text-gray-500"
+          data-tab="more"
+        >
+          <i class="fas fa-ellipsis-h mr-1"></i>
+          <span id="tab-more">More</span>
+        </button>
+      </div>
+
+      <!-- Tab Content -->
+      <div class="flex-1 overflow-y-auto">
+        <!-- Dashboard Tab -->
+        <div id="dashboard" class="tab-content active p-4">
+          <h3 class="font-bold text-lg mb-4" id="dashboard-title">
+            Farm Overview
+          </h3>
+
+          <!-- Weather Card -->
+          <div class="bg-blue-50 rounded-lg p-4 mb-4">
+            <div class="flex justify-between items-center">
+              <div>
+                <h4 class="font-medium" id="weather-title">Today's Weather</h4>
+                <p class="text-gray-600 text-sm" id="weather-location">
+                  Kampong Cham Province
+                </p>
+              </div>
+              <div class="text-right">
+                <div class="flex items-center justify-end">
+                  <i class="fas fa-sun text-yellow-500 text-2xl mr-2"></i>
+                  <span class="text-xl font-bold">32°C</span>
+                </div>
+                <p class="text-sm" id="weather-condition">Sunny</p>
+              </div>
+            </div>
+            <div class="mt-3 flex justify-between text-xs">
+              <div class="text-center">
+                <p>6 AM</p>
+                <i class="fas fa-cloud-sun text-gray-500 my-1"></i>
+                <p>28°C</p>
+              </div>
+              <div class="text-center">
+                <p>12 PM</p>
+                <i class="fas fa-sun text-yellow-500 my-1"></i>
+                <p>34°C</p>
+              </div>
+              <div class="text-center">
+                <p>6 PM</p>
+                <i class="fas fa-cloud-rain text-blue-500 my-1"></i>
+                <p>30°C</p>
+              </div>
+              <div class="text-center">
+                <p>12 AM</p>
+                <i class="fas fa-moon text-gray-700 my-1"></i>
+                <p>26°C</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tasks Card -->
+          <div class="bg-orange-50 rounded-lg p-4 mb-4">
+            <div class="flex justify-between items-center mb-3">
+              <h4 class="font-medium" id="tasks-title">Pending Tasks</h4>
+              <span
+                class="bg-orange-500 text-white text-xs px-2 py-1 rounded-full"
+                >2</span
+              >
+            </div>
+            <div class="space-y-3">
+              <div class="flex items-center">
+                <div class="bg-orange-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-seedling text-orange-500"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-medium" id="task-1">Fertilize rice field</p>
+                  <p class="text-xs text-gray-600" id="task-1-date">
+                    Due: Tomorrow
+                  </p>
+                </div>
+                <button class="text-orange-500">
+                  <i class="fas fa-chevron-right"></i>
+                </button>
+              </div>
+              <div class="flex items-center">
+                <div class="bg-orange-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-tint text-orange-500"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-medium" id="task-2">Check irrigation system</p>
+                  <p class="text-xs text-gray-600" id="task-2-date">
+                    Due: Today
+                  </p>
+                </div>
+                <button class="text-orange-500">
+                  <i class="fas fa-chevron-right"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Crop Cycle Progress -->
+          <div class="bg-white rounded-lg p-4 mb-4 border">
+            <h4 class="font-medium mb-3" id="crop-cycle-title">
+              Current Crop Cycle
+            </h4>
+            <div class="crop-cycle mb-4">
+              <div class="crop-cycle-stage" style="left: 0%">
+                <div
+                  class="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                >
+                  <i class="fas fa-seedling text-xs"></i>
+                </div>
+                <p class="text-xs text-center mt-1" id="stage-1">Planting</p>
+              </div>
+              <div class="crop-cycle-stage" style="left: 25%">
+                <div
+                  class="bg-green-400 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                >
+                  <i class="fas fa-leaf text-xs"></i>
+                </div>
+                <p class="text-xs text-center mt-1" id="stage-2">Growth</p>
+              </div>
+              <div class="crop-cycle-stage" style="left: 50%">
+                <div
+                  class="bg-yellow-400 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                >
+                  <i class="fas fa-water text-xs"></i>
+                </div>
+                <p class="text-xs text-center mt-1" id="stage-3">Flowering</p>
+              </div>
+              <div class="crop-cycle-stage" style="left: 75%">
+                <div
+                  class="bg-orange-400 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                >
+                  <i class="fas fa-wheat-alt text-xs"></i>
+                </div>
+                <p class="text-xs text-center mt-1" id="stage-4">Ripening</p>
+              </div>
+              <div class="crop-cycle-stage" style="left: 100%">
+                <div
+                  class="bg-red-400 text-white rounded-full w-8 h-8 flex items-center justify-center"
+                >
+                  <i class="fas fa-harvest text-xs"></i>
+                </div>
+                <p class="text-xs text-center mt-1" id="stage-5">Harvest</p>
+              </div>
+            </div>
+            <div class="flex justify-between text-sm">
+              <div>
+                <p class="font-medium" id="crop-name">Jasmine Rice</p>
+                <p class="text-gray-600" id="crop-area">0.5 hectare</p>
+              </div>
+              <div class="text-right">
+                <p class="font-medium">35%</p>
+                <p class="text-gray-600" id="days-remaining">
+                  45 days remaining
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <h4 class="font-medium mb-3" id="quick-actions-title">
+            Quick Actions
+          </h4>
+          <div class="grid grid-cols-4 gap-2 mb-4">
+            <button
+              class="bg-green-50 rounded-lg p-3 flex flex-col items-center"
+            >
+              <i class="fas fa-plus-circle text-green-500 text-xl mb-1"></i>
+              <span class="text-xs text-center" id="action-1"
+                >Log Activity</span
+              >
+            </button>
+            <button
+              class="bg-blue-50 rounded-lg p-3 flex flex-col items-center"
+            >
+              <i class="fas fa-camera text-blue-500 text-xl mb-1"></i>
+              <span class="text-xs text-center" id="action-2">Record</span>
+            </button>
+            <button
+              class="bg-purple-50 rounded-lg p-3 flex flex-col items-center"
+            >
+              <i class="fas fa-chart-line text-purple-500 text-xl mb-1"></i>
+              <span class="text-xs text-center" id="action-3">Report</span>
+            </button>
+            <button
+              class="bg-yellow-50 rounded-lg p-3 flex flex-col items-center"
+            >
+              <i class="fas fa-question text-yellow-500 text-xl mb-1"></i>
+              <span class="text-xs text-center" id="action-4">Help</span>
+            </button>
+          </div>
+
+          <!-- Market Prices -->
+          <h4 class="font-medium mb-3" id="market-prices-title">
+            Today's Market Prices
+          </h4>
+          <div class="bg-white rounded-lg p-4 border">
+            <div class="flex justify-between mb-2">
+              <p class="font-medium" id="commodity-1">Jasmine Rice</p>
+              <p class="text-green-600">$0.45/kg</p>
+            </div>
+            <div class="flex justify-between mb-2">
+              <p class="font-medium" id="commodity-2">Mangoes</p>
+              <p class="text-green-600">$0.75/kg</p>
+            </div>
+            <div class="flex justify-between">
+              <p class="font-medium" id="commodity-3">Cassava</p>
+              <p class="text-green-600">$0.20/kg</p>
+            </div>
+            <button
+              class="mt-3 w-full py-2 bg-green-50 text-green-600 rounded-lg text-sm font-medium"
+              id="view-all-prices"
+            >
+              View All Prices
+            </button>
+          </div>
+        </div>
+
+        <!-- Farm Tab -->
+        <div id="farm" class="tab-content p-4">
+          <h3 class="font-bold text-lg mb-4" id="farm-title">
+            My Farm Management
+          </h3>
+
+          <!-- Farm Map -->
+          <div class="map-container rounded-lg mb-4">
+            <div class="map-placeholder"></div>
+            <div
+              class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white p-2"
+            >
+              <div class="flex justify-between items-center">
+                <div>
+                  <p class="font-medium" id="farm-location">
+                    Kampong Cham Farm
+                  </p>
+                  <p class="text-xs" id="farm-size">1.2 hectares</p>
+                </div>
+                <button
+                  class="bg-green-500 text-white px-3 py-1 rounded-full text-sm"
+                  id="view-map"
+                >
+                  View Map
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Farm Plots -->
+          <h4 class="font-medium mb-3" id="farm-plots-title">My Plots</h4>
+          <div class="space-y-3 mb-4">
+            <div class="flex items-center p-3 bg-white rounded-lg border">
+              <div class="bg-green-100 p-2 rounded-full mr-3">
+                <i class="fas fa-seedling text-green-500"></i>
+              </div>
+              <div class="flex-1">
+                <p class="font-medium" id="plot-1-name">Rice Field A</p>
+                <p class="text-xs text-gray-600" id="plot-1-details">
+                  0.5ha • Jasmine Rice • 35% complete
+                </p>
+              </div>
+              <button class="text-green-500">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+            <div class="flex items-center p-3 bg-white rounded-lg border">
+              <div class="bg-blue-100 p-2 rounded-full mr-3">
+                <i class="fas fa-tree text-blue-500"></i>
+              </div>
+              <div class="flex-1">
+                <p class="font-medium" id="plot-2-name">Mango Orchard</p>
+                <p class="text-xs text-gray-600" id="plot-2-details">
+                  0.3ha • Keo Romiet • Harvest ready
+                </p>
+              </div>
+              <button class="text-blue-500">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+            <div class="flex items-center p-3 bg-white rounded-lg border">
+              <div class="bg-yellow-100 p-2 rounded-full mr-3">
+                <i class="fas fa-tractor text-yellow-500"></i>
+              </div>
+              <div class="flex-1">
+                <p class="font-medium" id="plot-3-name">Cassava Field</p>
+                <p class="text-xs text-gray-600" id="plot-3-details">
+                  0.4ha • Preparing soil
+                </p>
+              </div>
+              <button class="text-yellow-500">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Add New Plot -->
+          <button
+            class="w-full py-3 bg-green-100 text-green-600 rounded-lg flex items-center justify-center mb-4"
+            id="add-plot"
+          >
+            <i class="fas fa-plus mr-2"></i>
+            <span>Add New Plot</span>
+          </button>
+
+          <!-- Farm Activities -->
+          <h4 class="font-medium mb-3" id="activities-title">
+            Recent Activities
+          </h4>
+          <div class="space-y-3">
+            <div class="p-3 bg-white rounded-lg border">
+              <div class="flex items-start">
+                <div class="bg-purple-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-tint text-purple-500"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-medium" id="activity-1-title">Irrigation</p>
+                  <p class="text-xs text-gray-600 mb-2" id="activity-1-date">
+                    Yesterday, 3:45 PM
+                  </p>
+                  <p class="text-sm" id="activity-1-desc">
+                    Watered rice field for 2 hours. Used sprinkler system.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="p-3 bg-white rounded-lg border">
+              <div class="flex items-start">
+                <div class="bg-orange-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-spray-can text-orange-500"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-medium" id="activity-2-title">Fertilization</p>
+                  <p class="text-xs text-gray-600 mb-2" id="activity-2-date">
+                    2 days ago, 10:30 AM
+                  </p>
+                  <p class="text-sm" id="activity-2-desc">
+                    Applied NPK fertilizer to mango trees. 5kg total.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Market Tab -->
+        <div id="market" class="tab-content p-4">
+          <h3 class="font-bold text-lg mb-4" id="market-title">Marketplace</h3>
+
+          <!-- Market Tabs -->
+          <div class="flex mb-4 bg-gray-100 rounded-lg p-1">
+            <button
+              class="market-tab flex-1 py-2 px-4 text-center font-medium text-green-600 bg-white rounded-lg"
+              data-market="prices"
+            >
+              <span id="market-tab-prices">Prices</span>
+            </button>
+            <button
+              class="market-tab flex-1 py-2 px-4 text-center font-medium text-gray-500"
+              data-market="sell"
+            >
+              <span id="market-tab-sell">Sell</span>
+            </button>
+            <button
+              class="market-tab flex-1 py-2 px-4 text-center font-medium text-gray-500"
+              data-market="buy"
+            >
+              <span id="market-tab-buy">Buy</span>
+            </button>
+          </div>
+
+          <!-- Market Content -->
+          <div id="market-prices" class="market-content active">
+            <div class="mb-4">
+              <div class="flex justify-between items-center mb-2">
+                <h4 class="font-medium" id="price-trends-title">
+                  Price Trends
+                </h4>
+                <select
+                  class="border rounded-lg px-2 py-1 text-sm"
+                  id="price-commodity"
+                >
+                  <option value="rice">Jasmine Rice</option>
+                  <option value="mango">Mango</option>
+                  <option value="cassava">Cassava</option>
+                </select>
+              </div>
+              <div
+                class="bg-white p-4 rounded-lg border h-40 flex items-center justify-center"
+              >
+                <p class="text-gray-500" id="price-chart-message">
+                  Price chart will appear here
+                </p>
+              </div>
+            </div>
+
+            <h4 class="font-medium mb-2" id="current-prices-title">
+              Current Prices
+            </h4>
+            <div class="space-y-2 mb-4">
+              <div class="flex items-center p-3 bg-white rounded-lg border">
+                <div class="bg-green-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-wheat-alt text-green-500"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-medium" id="market-rice-name">Jasmine Rice</p>
+                  <p class="text-xs text-gray-600" id="market-rice-price">
+                    $0.45 - $0.50/kg (Phnom Penh)
+                  </p>
+                </div>
+                <button class="text-green-500 text-sm" id="view-rice">
+                  View
+                </button>
+              </div>
+              <div class="flex items-center p-3 bg-white rounded-lg border">
+                <div class="bg-yellow-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-apple-alt text-yellow-500"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-medium" id="market-mango-name">
+                    Keo Romiet Mango
+                  </p>
+                  <p class="text-xs text-gray-600" id="market-mango-price">
+                    $0.70 - $0.80/kg (Battambang)
+                  </p>
+                </div>
+                <button class="text-yellow-500 text-sm" id="view-mango">
+                  View
+                </button>
+              </div>
+              <div class="flex items-center p-3 bg-white rounded-lg border">
+                <div class="bg-orange-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-root text-orange-500"></i>
+                </div>
+                <div class="flex-1">
+                  <p class="font-medium" id="market-cassava-name">Cassava</p>
+                  <p class="text-xs text-gray-600" id="market-cassava-price">
+                    $0.18 - $0.22/kg (Kampong Cham)
+                  </p>
+                </div>
+                <button class="text-orange-500 text-sm" id="view-cassava">
+                  View
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="market-sell" class="market-content">
+            <div class="bg-blue-50 rounded-lg p-4 mb-4">
+              <div class="flex items-center">
+                <i class="fas fa-info-circle text-blue-500 mr-2"></i>
+                <p class="text-sm" id="sell-info">
+                  List your harvest to connect with buyers and get the best
+                  prices
+                </p>
+              </div>
+            </div>
+
+            <h4 class="font-medium mb-3" id="sell-title">Sell Your Produce</h4>
+            <div class="space-y-3 mb-4">
+              <div>
+                <label
+                  class="block text-sm font-medium mb-1"
+                  id="sell-product-label"
+                  >Product</label
+                >
+                <select class="w-full border rounded-lg px-3 py-2">
+                  <option value="" id="sell-select-default">
+                    Select product
+                  </option>
+                  <option value="rice" id="sell-rice">Jasmine Rice</option>
+                  <option value="mango" id="sell-mango">Mango</option>
+                  <option value="cassava" id="sell-cassava">Cassava</option>
+                </select>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium mb-1"
+                  id="sell-quantity-label"
+                  >Quantity (kg)</label
+                >
+                <input
+                  type="number"
+                  class="w-full border rounded-lg px-3 py-2"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium mb-1"
+                  id="sell-quality-label"
+                  >Quality</label
+                >
+                <select class="w-full border rounded-lg px-3 py-2">
+                  <option value="premium" id="sell-premium">Premium</option>
+                  <option value="standard" id="sell-standard">Standard</option>
+                  <option value="commercial" id="sell-commercial">
+                    Commercial
+                  </option>
+                </select>
+              </div>
+              <div>
+                <label
+                  class="block text-sm font-medium mb-1"
+                  id="sell-price-label"
+                  >Expected Price (per kg)</label
+                >
+                <input
+                  type="number"
+                  class="w-full border rounded-lg px-3 py-2"
+                  placeholder="0"
+                />
+              </div>
+            </div>
+
+            <button
+              class="w-full py-3 bg-green-600 text-white rounded-lg font-medium"
+              id="list-product"
+            >
+              List Product
+            </button>
+          </div>
+
+          <div id="market-buy" class="market-content">
+            <div class="bg-purple-50 rounded-lg p-4 mb-4">
+              <div class="flex items-center">
+                <i class="fas fa-info-circle text-purple-500 mr-2"></i>
+                <p class="text-sm" id="buy-info">
+                  Find quality inputs from trusted suppliers at competitive
+                  prices
+                </p>
+              </div>
+            </div>
+
+            <h4 class="font-medium mb-3" id="buy-title">Buy Farm Inputs</h4>
+            <div class="grid grid-cols-2 gap-3 mb-4">
+              <button
+                class="p-3 bg-white rounded-lg border flex flex-col items-center"
+              >
+                <i class="fas fa-seedling text-green-500 text-xl mb-2"></i>
+                <span class="text-sm" id="buy-seeds">Seeds</span>
+              </button>
+              <button
+                class="p-3 bg-white rounded-lg border flex flex-col items-center"
+              >
+                <i class="fas fa-spray-can text-blue-500 text-xl mb-2"></i>
+                <span class="text-sm" id="buy-fertilizer">Fertilizer</span>
+              </button>
+              <button
+                class="p-3 bg-white rounded-lg border flex flex-col items-center"
+              >
+                <i class="fas fa-tools text-yellow-500 text-xl mb-2"></i>
+                <span class="text-sm" id="buy-tools">Tools</span>
+              </button>
+              <button
+                class="p-3 bg-white rounded-lg border flex flex-col items-center"
+              >
+                <i class="fas fa-pills text-red-500 text-xl mb-2"></i>
+                <span class="text-sm" id="buy-pesticides">Pesticides</span>
+              </button>
+            </div>
+
+            <h4 class="font-medium mb-2" id="featured-suppliers-title">
+              Featured Suppliers
+            </h4>
+            <div class="space-y-2">
+              <div class="flex items-center p-3 bg-white rounded-lg border">
+                <img
+                  src="https://ui-avatars.com/api/?name=Agri+Supply&background=4CAF50&color=fff"
+                  alt="Supplier"
+                  class="w-10 h-10 rounded-full mr-3"
+                />
+                <div class="flex-1">
+                  <p class="font-medium" id="supplier-1-name">
+                    Agri Supply Co.
+                  </p>
+                  <p class="text-xs text-gray-600" id="supplier-1-specialty">
+                    Fertilizers & Seeds
+                  </p>
+                </div>
+                <button class="text-green-500 text-sm" id="view-supplier-1">
+                  View
+                </button>
+              </div>
+              <div class="flex items-center p-3 bg-white rounded-lg border">
+                <img
+                  src="https://ui-avatars.com/api/?name=Green+Tools&background=4CAF50&color=fff"
+                  alt="Supplier"
+                  class="w-10 h-10 rounded-full mr-3"
+                />
+                <div class="flex-1">
+                  <p class="font-medium" id="supplier-2-name">
+                    Green Tools Ltd.
+                  </p>
+                  <p class="text-xs text-gray-600" id="supplier-2-specialty">
+                    Farming Equipment
+                  </p>
+                </div>
+                <button class="text-green-500 text-sm" id="view-supplier-2">
+                  View
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- More Tab -->
+        <div id="more" class="tab-content p-4">
+          <h3 class="font-bold text-lg mb-4" id="more-title">More Options</h3>
+
+          <!-- Support Section -->
+          <div class="bg-white rounded-lg border p-4 mb-4">
+            <h4 class="font-medium mb-3" id="support-title">
+              Support & Learning
+            </h4>
+            <div class="space-y-3">
+              <button
+                class="flex items-center p-3 bg-gray-50 rounded-lg w-full text-left"
+              >
+                <div class="bg-green-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-book text-green-500"></i>
+                </div>
+                <span class="flex-1" id="support-1">Farm Guides</span>
+                <i class="fas fa-chevron-right text-gray-400"></i>
+              </button>
+              <button
+                class="flex items-center p-3 bg-gray-50 rounded-lg w-full text-left"
+              >
+                <div class="bg-blue-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-video text-blue-500"></i>
+                </div>
+                <span class="flex-1" id="support-2">Training Videos</span>
+                <i class="fas fa-chevron-right text-gray-400"></i>
+              </button>
+              <button
+                class="flex items-center p-3 bg-gray-50 rounded-lg w-full text-left"
+              >
+                <div class="bg-purple-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-headset text-purple-500"></i>
+                </div>
+                <span class="flex-1" id="support-3">Help Center</span>
+                <i class="fas fa-chevron-right text-gray-400"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Financial Services -->
+          <div class="bg-white rounded-lg border p-4 mb-4">
+            <h4 class="font-medium mb-3" id="finance-title">
+              Financial Services
+            </h4>
+            <div class="space-y-3">
+              <button
+                class="flex items-center p-3 bg-gray-50 rounded-lg w-full text-left"
+              >
+                <div class="bg-yellow-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-hand-holding-usd text-yellow-500"></i>
+                </div>
+                <span class="flex-1" id="finance-1">Loans</span>
+                <i class="fas fa-chevron-right text-gray-400"></i>
+              </button>
+              <button
+                class="flex items-center p-3 bg-gray-50 rounded-lg w-full text-left"
+              >
+                <div class="bg-red-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-shield-alt text-red-500"></i>
+                </div>
+                <span class="flex-1" id="finance-2">Insurance</span>
+                <i class="fas fa-chevron-right text-gray-400"></i>
+              </button>
+              <button
+                class="flex items-center p-3 bg-gray-50 rounded-lg w-full text-left"
+              >
+                <div class="bg-green-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-piggy-bank text-green-500"></i>
+                </div>
+                <span class="flex-1" id="finance-3">Savings</span>
+                <i class="fas fa-chevron-right text-gray-400"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Settings -->
+          <div class="bg-white rounded-lg border p-4">
+            <h4 class="font-medium mb-3" id="settings-title">Settings</h4>
+            <div class="space-y-3">
+              <button
+                class="flex items-center p-3 bg-gray-50 rounded-lg w-full text-left"
+              >
+                <div class="bg-blue-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-user-cog text-blue-500"></i>
+                </div>
+                <span class="flex-1" id="settings-1">Account Settings</span>
+                <i class="fas fa-chevron-right text-gray-400"></i>
+              </button>
+              <button
+                class="flex items-center p-3 bg-gray-50 rounded-lg w-full text-left"
+              >
+                <div class="bg-purple-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-bell text-purple-500"></i>
+                </div>
+                <span class="flex-1" id="settings-2">Notifications</span>
+                <i class="fas fa-chevron-right text-gray-400"></i>
+              </button>
+              <button
+                class="flex items-center p-3 bg-gray-50 rounded-lg w-full text-left"
+              >
+                <div class="bg-red-100 p-2 rounded-full mr-3">
+                  <i class="fas fa-sign-out-alt text-red-500"></i>
+                </div>
+                <span class="flex-1" id="settings-3">Log Out</span>
+                <i class="fas fa-chevron-right text-gray-400"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Language toggle functionality
+      const languageToggle = document.getElementById("language-toggle");
+      const khmerTranslations = {
+        "app-title": "កសិកម្មភ្ជាប់",
+        "farmer-name": "សាឡឹត ម៉េង",
+        "farmer-id": "លេខសម្គាល់កសិករ៖ FC-2023-001",
+        "farmer-status": "សកម្ម",
+        "farmer-type": "កសិករតូច",
+        "tab-dashboard": "ផ្ទាំងព័ត៌មាន",
+        "tab-farm": "កសិដ្ឋានខ្ញុំ",
+        "tab-market": "ផ្សារ",
+        "tab-more": "បន្ថែម",
+        "dashboard-title": "ទិដ្ឋភាពទូទៅនៃកសិដ្ឋាន",
+        "weather-title": "អាកាសធាតុថ្ងៃនេះ",
+        "weather-location": "ខេត្តកំពង់ចាម",
+        "weather-condition": "ភ្លឺស្វាង",
+        "tasks-title": "ភារកិច្ចដែលមិនទាន់បានធ្វើ",
+        "task-1": "ដាក់ជីស្រូវ",
+        "task-1-date": "ដល់ថ្ងៃស្អែក",
+        "task-2": "ពិនិត្យប្រព័ន្ធស្រោចស្រព",
+        "task-2-date": "ដល់ថ្ងៃនេះ",
+        "crop-cycle-title": "វដ្តដំណាំបច្ចុប្បន្ន",
+        "stage-1": "ដាំដុះ",
+        "stage-2": "ដុះលូតលាស់",
+        "stage-3": "ចេញផ្កា",
+        "stage-4": "ចម្រើនផ្លែ",
+        "stage-5": "ប្រមូលផល",
+        "crop-name": "ស្រូវអាមេរិកាំង",
+        "crop-area": "០.៥ហិកតា",
+        "days-remaining": "នៅសល់៤៥ថ្ងៃ",
+        "quick-actions-title": "សកម្មភាពរហ័ស",
+        "action-1": "កត់ត្រាសកម្មភាព",
+        "action-2": "ថតរូប",
+        "action-3": "របាយការណ៍",
+        "action-4": "ជំនួយ",
+        "market-prices-title": "តម្លៃផ្សារថ្ងៃនេះ",
+        "commodity-1": "ស្រូវអាមេរិកាំង",
+        "commodity-2": "ស្វាយ",
+        "commodity-3": "ការការកសិដ្ឋាន",
+        "view-all-prices": "មើលតម្លៃទាំងអស់",
+        "farm-title": "ការគ្រប់គ្រងកសិដ្ឋានខ្ញុំ",
+        "farm-location": "កសិដ្ឋានកំពង់ចាម",
+        "farm-size": "១.២ហិកតា",
+        "view-map": "មើលផែនទី",
+        "farm-plots-title": "ដីដាំដុះខ្ញុំ",
+        "plot-1-name": "ដំណាំស្រូវ A",
+        "plot-1-details": "០.៥ហា • ស្រូវអាមេរិកាំង • បានធ្វើ៣៥%",
+        "plot-2-name": "ដំណាំស្វាយ",
+        "plot-2-details": "០.៣ហា • ស្វាយកែវរមៀត • រួចរាល់ដើម្បីប្រមូលផល",
+        "plot-3-name": "ដំណាំការការ",
+        "plot-3-details": "០.៤ហា • កំពុងរៀបចំដី",
+        "add-plot": "បន្ថែមដីដាំដុះថ្មី",
+        "activities-title": "សកម្មភាពថ្មីៗ",
+        "activity-1-title": "ស្រោចស្រព",
+        "activity-1-date": "ម្សិលមិញ, ៣:៤៥ល្ងាច",
+        "activity-1-desc":
+          "បានស្រោចស្រពដំណាំស្រូវរយៈពេល២ម៉ោង។ បានប្រើប្រព័ន្ធស្រោចស្រព។",
+        "activity-2-title": "ដាក់ជី",
+        "activity-2-date": "២ថ្ងៃមុន, ១០:៣០ព្រឹក",
+        "activity-2-desc": "បានដាក់ជី NPK ដល់ដើមស្វាយ។ សរុប៥គីឡូ។",
+        "market-title": "ផ្សារកសិកម្ម",
+        "market-tab-prices": "តម្លៃ",
+        "market-tab-sell": "លក់",
+        "market-tab-buy": "ទិញ",
+        "price-trends-title": "ដំណើរតម្លៃ",
+        "current-prices-title": "តម្លៃបច្ចុប្បន្ន",
+        "market-rice-name": "ស្រូវអាមេរិកាំង",
+        "market-rice-price": "០.៤៥-០.៥០ដុល្លារ/គីឡូ (ភ្នំពេញ)",
+        "view-rice": "មើល",
+        "market-mango-name": "ស្វាយកែវរមៀត",
+        "market-mango-price": "០.៧០-០.៨០ដុល្លារ/គីឡូ (បាត់ដំបង)",
+        "view-mango": "មើល",
+        "market-cassava-name": "ការការ",
+        "market-cassava-price": "០.១៨-០.២២ដុល្លារ/គីឡូ (កំពង់ចាម)",
+        "view-cassava": "មើល",
+        "sell-info":
+          "ដាក់បញ្ជីផលិតផលរបស់អ្នកដើម្បីភ្ជាប់ជាមួយអ្នកទិញ និងទទួលបានតម្លៃល្អបំផុត",
+        "sell-title": "លក់ផលិតផលរបស់អ្នក",
+        "sell-product-label": "ផលិតផល",
+        "sell-select-default": "ជ្រើសរើសផលិតផល",
+        "sell-rice": "ស្រូវអាមេរិកាំង",
+        "sell-mango": "ស្វាយ",
+        "sell-cassava": "ការការ",
+        "sell-quantity-label": "បរិមាណ (គីឡូ)",
+        "sell-quality-label": "គុណភាព",
+        "sell-premium": "គុណភាពខ្ពស់",
+        "sell-standard": "ស្តង់ដារ",
+        "sell-commercial": "ពាណិជ្ជកម្ម",
+        "sell-price-label": "តម្លៃដែលរំពឹងទុក (ក្នុងមួយគីឡូ)",
+        "list-product": "ដាក់បញ្ជីផលិតផល",
+        "buy-info":
+          "ស្វែងរកវត្ថុធាតុដើមគុណភាពពីអ្នកផ្គត់ផ្គង់ដែលអាចទុកចិត្តបានក្នុងតម្លៃប្រកួតប្រជែង",
+        "buy-title": "ទិញវត្ថុធាតុដើមកសិកម្ម",
+        "buy-seeds": "គ្រាប់ពូជ",
+        "buy-fertilizer": "ជី",
+        "buy-tools": "ឧបករណ៍",
+        "buy-pesticides": "សារធាតុកំចាត់សត្វល្អិត",
+        "featured-suppliers-title": "អ្នកផ្គត់ផ្គង់ដែលបានណែនាំ",
+        "supplier-1-name": "ក្រុមហ៊ុនផ្គត់ផ្គង់កសិកម្ម",
+        "supplier-1-specialty": "ជី និងគ្រាប់ពូជ",
+        "view-supplier-1": "មើល",
+        "supplier-2-name": "ក្រុមហ៊ុនឧបករណ៍បៃតង",
+        "supplier-2-specialty": "ឧបករណ៍កសិកម្ម",
+        "view-supplier-2": "មើល",
+        "more-title": "ជម្រើសបន្ថែម",
+        "support-title": "ជំនួយ និងការរៀន",
+        "support-1": "មគ្គុទេសក៍កសិកម្ម",
+        "support-2": "វីដេអូបណ្តុះបណ្តាល",
+        "support-3": "មជ្ឈមណ្ឌលជំនួយ",
+        "finance-title": "សេវាកម្មហិរញ្ញវត្ថុ",
+        "finance-1": "ប្រាក់កម្ចី",
+        "finance-2": "ការធានារ៉ាប់រង",
+        "finance-3": "ការសន្សំ",
+        "settings-title": "ការកំណត់",
+        "settings-1": "ការកំណត់គណនី",
+        "settings-2": "ការជូនដំណឹង",
+        "settings-3": "ចាកចេញ",
+      };
+
+      languageToggle.addEventListener("change", function () {
+        const isKhmer = this.checked;
+        document.querySelectorAll("[id]").forEach((element) => {
+          const id = element.id;
+          if (khmerTranslations[id]) {
+            element.textContent = isKhmer
+              ? khmerTranslations[id]
+              : element.getAttribute("data-original") || element.textContent;
+
+            if (isKhmer && !element.hasAttribute("data-original")) {
+              element.setAttribute("data-original", element.textContent);
+            }
+          }
+        });
+      });
+
+      // Tab switching functionality
+      const tabButtons = document.querySelectorAll(".tab-btn");
+      const tabContents = document.querySelectorAll(".tab-content");
+
+      tabButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          // Remove active class from all buttons and contents
+          tabButtons.forEach((btn) => {
+            btn.classList.remove("text-green-600", "border-green-600");
+            btn.classList.add("text-gray-500");
+          });
+          tabContents.forEach((content) => content.classList.remove("active"));
+
+          // Add active class to clicked button and corresponding content
+          button.classList.add("text-green-600", "border-green-600");
+          button.classList.remove("text-gray-500");
+          const tabId = button.getAttribute("data-tab");
+          document.getElementById(tabId).classList.add("active");
+        });
+      });
+
+      // Market tab switching
+      const marketTabButtons = document.querySelectorAll(".market-tab");
+      const marketContents = document.querySelectorAll(".market-content");
+
+      marketTabButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          // Remove active class from all buttons and contents
+          marketTabButtons.forEach((btn) => {
+            btn.classList.remove("text-green-600", "bg-white");
+            btn.classList.add("text-gray-500");
+          });
+          marketContents.forEach((content) =>
+            content.classList.remove("active")
+          );
+
+          // Add active class to clicked button and corresponding content
+          button.classList.add("text-green-600", "bg-white");
+          button.classList.remove("text-gray-500");
+          const marketId = button.getAttribute("data-market");
+          document.getElementById(`market-${marketId}`).classList.add("active");
+        });
+      });
+
+      // Simulate loading data
+      setTimeout(() => {
+        document.querySelectorAll(".animate-pulse").forEach((el) => {
+          el.classList.remove("animate-pulse");
+        });
+      }, 1500);
+    </script>
+  </body>
+</html>
